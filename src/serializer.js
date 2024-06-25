@@ -79,7 +79,9 @@ export class Serializer {
       }
     }
 
-    data.attributes = attrs
+    if (Object.entries(attrs).length) {
+      data.attributes = attrs
+    }
 
     if (Object.entries(rels).length) {
       data.relationships = rels
