@@ -17,5 +17,10 @@
         "code": 1135
       }
     }
+  },
+  "dist\\index.js": {
+    "bundled": 40393,
+    "minified": 22644,
+    "gzipped": 6764
   }
 }
