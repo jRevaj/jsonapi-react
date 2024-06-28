@@ -17,7 +17,12 @@ export function isNumber(n) {
 }
 
 export function isUUID(v) {
-  return isString(v) && v.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i)
+  return (
+    isString(v) &&
+    v.match(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    )
+  )
 }
 
 export function toArray(val) {
@@ -160,7 +165,7 @@ export function getTypeMap(query, schema, data) {
 
   return {
     type,
-    relationships: rels.filter((r, i) => rels.indexOf(r) === i)
+    relationships: rels.filter((r, i) => rels.indexOf(r) === i),
   }
 }
 
@@ -187,10 +192,15 @@ export function coerceValue(val, type) {
     case 'number':
       return val ? parseInt(val, 10) : val
     case 'float':
-      return val ? parseFloat(val, 10) : val
+      return val ? parseFloat(val) : val
     case 'date':
-      return val ? new Date(val) : val
+      if (val === null || typeof val === 'boolean') {
+        return null
+      }
+      const date = new Date(val)
+      return isNaN(date.getTime()) ? null : date
     case 'boolean':
+      if (val === 'false') return false
       return !!val
     default:
       return val
