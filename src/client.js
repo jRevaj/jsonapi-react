@@ -151,7 +151,7 @@ export class ApiClient {
 
   fetch(queryArg, config = {}) {
     const {
-      force = false,
+      // force = false,
       cacheTime = this.config.cacheTime,
       staleTime = this.config.staleTime,
       headers,
@@ -310,7 +310,7 @@ export class ApiClient {
 
     const timestamp = query.timestamp || 0
     const cacheTime = query.cacheTime || 0
-    const expires = timestamp + (cacheTime * 1000)
+    const expires = timestamp + cacheTime * 1000
     const timeout = Math.max(0, expires - new Date().getTime())
 
     if (timeout) {

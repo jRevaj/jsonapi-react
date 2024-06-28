@@ -20,7 +20,7 @@ export function useIsFetching() {
     return client.subscribe(() => {
       setIsFetching(client.isFetching())
     })
-  }, [])
+  })
 
   return isFetching
 }
@@ -66,7 +66,9 @@ export function useQuery(queryArg, config) {
 
   React.useEffect(() => {
     mountedRef.current = true
-    return () => { mountedRef.current = null }
+    return () => {
+      mountedRef.current = null
+    }
   }, [])
 
   React.useMemo(() => {
@@ -91,6 +93,8 @@ export function useQuery(queryArg, config) {
         isFetching: true,
       }
     }
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query.url])
 
   React.useEffect(() => {
@@ -126,13 +130,11 @@ export function useQuery(queryArg, config) {
       cleanup()
       client.scheduleGC(query)
     }
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query])
 
-  if (
-    ssr !== false &&
-    client.config.ssrMode &&
-    !query.cache
-  ) {
+  if (ssr !== false && client.config.ssrMode && !query.cache) {
     refetch()
   }
 
@@ -145,8 +147,10 @@ export function useQuery(queryArg, config) {
 }
 
 export function useMutation(queryArg, config = {}) {
+  const defaultClient = useClient()
+
   const {
-    client = useClient(),
+    client = defaultClient,
     initialData,
     onSuccess,
     onError,
@@ -178,11 +182,15 @@ export function useMutation(queryArg, config = {}) {
 
   React.useEffect(() => {
     setData(initialData)
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query])
 
   React.useEffect(() => {
     mountedRef.current = true
-    return () => { mountedRef.current = null }
+    return () => {
+      mountedRef.current = null
+    }
   }, [])
 
   const mutate = async data => {

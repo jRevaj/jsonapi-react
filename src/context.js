@@ -16,7 +16,7 @@ export function ApiProvider({ children, ...config }) {
       throw new Error('ApiProvider requires a "client" prop')
     }
 
-    if (!result.client instanceof ApiClient) {
+    if ((!result.client) instanceof ApiClient) {
       throw new Error('"client" prop must be an ApiClient instance')
     }
 
@@ -25,11 +25,13 @@ export function ApiProvider({ children, ...config }) {
     }
 
     return result
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [context, config.client])
 
   React.useEffect(() => {
     config.client.isMounted = true
-  }, [])
+  })
 
   return <ApiContext.Provider value={config} children={children} />
 }
