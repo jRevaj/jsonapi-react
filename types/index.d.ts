@@ -74,7 +74,7 @@ declare module 'jsonapi-react' {
     client: ApiClient
   }): JSX.Element
 
-  export const ApiContext: React.Context
+  export const ApiContext: React.Context<ApiClient | undefined>
 
   export function renderWithData(
     element: JSX.Element,

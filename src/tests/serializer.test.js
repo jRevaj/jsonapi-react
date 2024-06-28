@@ -28,9 +28,7 @@ describe('serialize', () => {
         id: 2,
         name: 'Steve',
       },
-      comments: [
-        { id: '1', text: 'Almost done...' }
-      ],
+      comments: [{ id: '1', text: 'Almost done...' }],
     }
 
     const result = serializer.serialize('todos', data)
@@ -50,9 +48,7 @@ describe('serialize', () => {
             },
           },
           comments: {
-            data: [
-              { type: 'comments', id: '1' }
-            ],
+            data: [{ type: 'comments', id: '1' }],
           },
         },
       },
@@ -68,7 +64,7 @@ describe('serialize', () => {
       owner_type: 'todos',
       owner: {
         id: 1,
-      }
+      },
     }
 
     const result = serializer.serialize('photos', data)
@@ -124,11 +120,11 @@ describe('serialize', () => {
             title: {
               serialize: (val, attrs) => {
                 return `${val}${attrs.description}`
-              }
-            }
-          }
-        }
-      }
+              },
+            },
+          },
+        },
+      },
     })
 
     const data = {
@@ -208,7 +204,7 @@ describe('deserialize', () => {
             },
           },
         },
-      }
+      },
     })
     const result = serializer.deserialize(success)
 
@@ -258,6 +254,153 @@ describe('deserialize', () => {
           status: 'DONE',
         },
       },
+    })
+  })
+
+  test('it handles errors', () => {
+    const serializer = new Serializer()
+    const result = serializer.deserialize({ error: 'Not found' })
+
+    expect(result).toEqual({
+      error: {
+        status: '400',
+        title: 'Not found',
+        message: 'Not found',
+      },
+    })
+  })
+
+  test('it handles errors with status', () => {
+    const serializer = new Serializer()
+    const result = serializer.deserialize({ status: 404, error: 'Not found' })
+
+    expect(result).toEqual({
+      error: {
+        status: '404',
+        title: 'Not found',
+        message: 'Not found',
+      },
+    })
+  })
+
+  test('it handles errors with errors', () => {
+    const serializer = new Serializer()
+    const result = serializer.deserialize({
+      errors: [{ status: '404', title: 'Not found' }],
+    })
+
+    expect(result).toEqual({
+      error: {
+        status: '404',
+        title: 'Not found',
+      },
+    })
+  })
+
+  test('it handles general meta data', () => {
+    const serializer = new Serializer()
+    const result = serializer.deserialize({
+      data: {
+        id: '1',
+        type: 'todos',
+        attributes: {
+          title: 'Clean the kitchen!',
+        },
+      },
+      meta: {
+        total: 10,
+        page: 1,
+      },
+    })
+
+    expect(result).toEqual({
+      data: {
+        id: '1',
+        title: 'Clean the kitchen!',
+      },
+      meta: {
+        total: 10,
+        page: 1,
+      },
+    })
+  })
+
+  test('it handles object meta data', () => {
+    const serializer = new Serializer()
+    const result = serializer.deserialize({
+      data: {
+        id: '1',
+        type: 'todos',
+        attributes: {
+          title: 'Clean the kitchen!',
+        },
+        meta: {
+          createdAt: '2023-04-26T06:00:02.000000Z',
+          updatedAt: '2023-05-18T10:47:04.000000Z',
+        },
+      },
+    })
+
+    expect(result).toEqual({
+      data: {
+        id: '1',
+        title: 'Clean the kitchen!',
+        meta: {
+          createdAt: '2023-04-26T06:00:02.000000Z',
+          updatedAt: '2023-05-18T10:47:04.000000Z',
+        },
+      },
+    })
+  })
+
+  test('deserializes data correctly', () => {
+    const serializer = new Serializer()
+    const result = serializer.deserialize({
+      data: [
+        {
+          id: '1',
+          type: 'todos',
+          attributes: {
+            title: 'Clean the kitchen!',
+          },
+          meta: {
+            createdAt: '2023-04-26T06:00:02.000000Z',
+            updatedAt: '2023-05-18T10:47:04.000000Z',
+          },
+        },
+        {
+          id: '2',
+          type: 'todos',
+          attributes: {
+            title: 'Buy groceries',
+          },
+          meta: {
+            createdAt: '2023-04-14T12:00:02.000000Z',
+            updatedAt: '2023-05-14T05:47:04.000000Z',
+          },
+        },
+      ],
+    })
+
+    expect(result).toEqual({
+      data: [
+        {
+          id: '1',
+          title: 'Clean the kitchen!',
+          meta: {
+            createdAt: '2023-04-26T06:00:02.000000Z',
+            updatedAt: '2023-05-18T10:47:04.000000Z',
+          },
+        },
+        {
+          id: '2',
+          title: 'Buy groceries',
+          meta: {
+            createdAt: '2023-04-14T12:00:02.000000Z',
+            updatedAt: '2023-05-14T05:47:04.000000Z',
+          },
+        },
+      ],
     })
   })
 })

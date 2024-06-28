@@ -59,9 +59,7 @@ export class Serializer {
       if (!ref.readOnly) {
         if (Array.isArray(val)) {
           rels[field] = {
-            data: val.map(v =>
-              this.parseRelationship(relType, v)
-            ),
+            data: val.map(v => this.parseRelationship(relType, v)),
           }
         } else {
           rels[field] = {
@@ -142,6 +140,7 @@ export class Serializer {
       const attrs = {
         id: rec.id,
         ...rec.attributes,
+        meta: rec.meta,
       }
 
       if (fields[rec.type]) {
@@ -151,7 +150,7 @@ export class Serializer {
           ref = fields[rec.type][field]
 
           if (ref.type) {
-            attrs[field] = coerceValue(attrs[field], ref.type)
+            attrs[field] = coerceValue(attrs[field], ref.type) || attrs[field]
           }
 
           if (typeof ref.resolve === 'function') {
@@ -177,9 +176,10 @@ export class Serializer {
         if (!rel) return
 
         if (Array.isArray(rel)) {
-          rec.attributes[key] = rel.map(r => (
-            data.find(d => d.type === r.type && d.id === r.id)
-          )).filter(Boolean).map(r => r.attributes)
+          rec.attributes[key] = rel
+            .map(r => data.find(d => d.type === r.type && d.id === r.id))
+            .filter(Boolean)
+            .map(r => r.attributes)
         } else {
           const child = data.find(r => r.type === rel.type && r.id === rel.id)
           rec.attributes[key] = child ? child.attributes : null
@@ -188,15 +188,21 @@ export class Serializer {
     })
 
     if (Array.isArray(res.data)) {
-      data = data.reduce(
-        (acc, rec) =>
-          res.data.find(r => r.id === rec.id && r.type === rec.type)
-            ? acc.concat(rec.attributes)
-            : acc,
-        []
-      )
+      data = data.reduce((acc, rec) => {
+        const found = res.data.find(r => r.id === rec.id && r.type === rec.type)
+        if (found) {
+          // Merge attributes and meta data
+          const mergedData = { ...rec.attributes, meta: rec.meta }
+          return acc.concat(mergedData)
+        }
+        return acc
+      }, [])
     } else {
-      data = data.find(r => r.id === res.data.id).attributes
+      const record = data.find(r => r.id === res.data.id)
+      if (record) {
+        // Merge attributes and meta data for the single object case
+        data = { ...record.attributes, meta: record.meta }
+      }
     }
 
     return { data, ...rest }
