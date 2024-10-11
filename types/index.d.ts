@@ -32,6 +32,7 @@ declare module 'jsonapi-react' {
     staleTime?: number
     headers?: {}
     method?: string
+    invalidate?: boolean | string | string[] 
     ssrMode?: boolean
     formatError?: (error) => any
     formatErrors?: (errors) => any
