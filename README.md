@@ -1,14 +1,12 @@
 # jsonapi-react
+
 A minimal [JSON:API](https://jsonapi.org/) client and [React](https://reactjs.org/) hooks for fetching, updating, and caching remote data.
 
-<a href="https://bundlephobia.com/result?p=jsonapi-react@latest" target="\_parent">
-  <img src="https://badgen.net/bundlephobia/minzip/jsonapi-react@latest" />
-</a>
-<a href="https://travis-ci.com/aribouius/jsonapi-react" target="\_parent">
-  <img src="https://api.travis-ci.org/aribouius/jsonapi-react.svg?branch=master" />
-</a>
+[![Bundle Size](https://badgen.net/bundlephobia/minzip/jsonapi-react@latest)](https://bundlephobia.com/result?p=jsonapi-react@latest)
+[![Build Status](https://api.travis-ci.org/aribouius/jsonapi-react.svg?branch=master)](https://travis-ci.com/aribouius/jsonapi-react)
 
 ## Features
+
 - Declarative API queries and mutations
 - JSON:API schema serialization + normalization
 - Query caching + garbage collection
@@ -16,6 +14,7 @@ A minimal [JSON:API](https://jsonapi.org/) client and [React](https://reactjs.or
 - SSR support
 
 ## Purpose
+
 In short, to provide a similar client experience to using `React` + [GraphQL](https://graphql.org/).  
 
 The `JSON:API` specification offers numerous benefits for writing and consuming REST API's, but at the expense of clients being required to manage complex schema serializations. There are [several projects](https://jsonapi.org/implementations/) that provide good `JSON:API` implementations,
@@ -23,8 +22,8 @@ but none offer a seamless integration with `React` without incorporating additio
 
 Libraries like [react-query](https://github.com/tannerlinsley/react-query) and [SWR](https://github.com/zeit/swr) (both of which are fantastic, and obvious inspirations for this project) go a far way in bridging the gap when coupled with a serialization library like [json-api-normalizer](https://github.com/yury-dymov/json-api-normalizer). But both require a non-trivial amount of cache invalidation configuration, given resources can be returned from any number of endpoints.  
 
-
 ## Support
+
 - React 16.8 or later
 - Browsers [`> 1%, not dead`](https://browserl.ist/?q=%3E+1%25%2C+not+dead)
 - Consider polyfilling:
@@ -32,29 +31,54 @@ Libraries like [react-query](https://github.com/tannerlinsley/react-query) and [
   - [Fetch](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API)
 
 ## Documentation
-- [Installation](#installation)
-- [Getting Started](#getting-started)
-- [Queries](#queries)
-- [Mutations](#mutations)
-- [Deleting](#deleting-resources)
-- [Caching](#caching)
-- [Manual Requests](#manual-requests)
-- [Server-Side Rendering](#server-side-rendering)
-- [API Reference](#api)
-  - [useQuery](#useQuery)
-  - [useMutation](#useMutation)
-  - [useIsFetching](#useClient)
-  - [useClient](#useClient)
-  - [ApiClient](#ApiClient)
-  - [ApiProvider](#ApiProvider)
-  - [renderWithData](#renderWithData)
+
+- [jsonapi-react](#jsonapi-react)
+  - [Features](#features)
+  - [Purpose](#purpose)
+  - [Support](#support)
+  - [Documentation](#documentation)
+  - [Installation](#installation)
+  - [Getting Started](#getting-started)
+    - [Schema Definition](#schema-definition)
+  - [Queries](#queries)
+    - [Normalization](#normalization)
+  - [Mutations](#mutations)
+    - [Serialization](#serialization)
+  - [Deleting Resources](#deleting-resources)
+  - [Caching](#caching)
+    - [Configuration](#configuration)
+    - [Invalidation](#invalidation)
+  - [Manual Requests](#manual-requests)
+  - [Server-Side Rendering](#server-side-rendering)
+  - [API](#api)
+    - [`useQuery`](#usequery)
+      - [Options](#options)
+      - [Result](#result)
+    - [`useMutation`](#usemutation)
+      - [Options](#options-1)
+      - [Result](#result-1)
+    - [`useIsFetching`](#useisfetching)
+      - [Result](#result-2)
+    - [`useClient`](#useclient)
+      - [Result](#result-3)
+    - [`ApiClient`](#apiclient)
+      - [Methods](#methods)
+    - [`ApiProvider`](#apiprovider)
+      - [Options](#options-2)
+    - [`renderWithData`](#renderwithdata)
+      - [Options](#options-3)
+      - [Result](#result-4)
+
 ## Installation
-```
+
+```bash
 npm i --save jsonapi-react
 ```
 
 ## Getting Started
-To begin you'll need to create an [ApiClient](#ApiClient) instance and wrap your app with a provider.
+
+To begin you'll need to create an [ApiClient](#apiclient) instance and wrap your app with a provider.
+
 ```javascript
 import { ApiClient, ApiProvider } from 'jsonapi-react'
 import schema from './schema'
@@ -77,6 +101,7 @@ ReactDOM.render(
 ```
 
 ### Schema Definition
+
 In order to accurately serialize mutations and track which resource types are associated with each request, the `ApiClient` class requires a schema object that describes your API's resources and their relationships.
 
 ```javascript
@@ -103,6 +128,7 @@ new ApiClient({
 ```
 
 You can also describe and customize how fields get deserialized.  Field configuration is entirely _additive_, so any omitted fields are simply passed through unchanged.
+
 ```javascript
 const schema = {
   todos: {
@@ -129,7 +155,9 @@ const schema = {
 ```
 
 ## Queries
-To make a query, call the [useQuery](#useQuery) hook with the `type` of resource you are fetching. The returned object will contain the query result, as well as information relating to the request.
+
+To make a query, call the [useQuery](#usequery) hook with the `type` of resource you are fetching. The returned object will contain the query result, as well as information relating to the request.
+
 ```javascript
 import { useQuery } from 'jsonapi-react'
 
@@ -151,17 +179,20 @@ function Todos() {
 ```
 
 The argument simply gets converted to an API endpoint string, so the above is equivalent to doing
+
 ```javascript
 useQuery('/todos')
 ```
 
 As syntactic sugar, you can also pass an array of URL segments.
+
 ```javascript
 useQuery(['todos', 1])
 useQuery(['todos', 1, 'comments'])
 ```
 
 To apply refinements such as filtering, pagination, or included resources, pass an object of URL query parameters as the _last_ value of the array. The object gets serialized to a `JSON:API` compatible query string using [qs](https://github.com/ljharb/qs).
+
 ```javascript
 useQuery(['todos', {
   filter: {
@@ -178,13 +209,16 @@ useQuery(['todos', {
 ```
 
 If a query isn't ready to be requested yet, pass a _falsey_ value to defer execution.
+
 ```javascript
 const id = null
 const { data: todos } = useQuery(id && ['users', id, 'todos'])
 ```
 
 ### Normalization
+
 The API response data gets automatically deserialized into a nested resource structure, meaning this...
+
 ```javascript
 {
   "data": {
@@ -215,6 +249,7 @@ The API response data gets automatically deserialized into a nested resource str
 ```
 
 Gets normalized to...
+
 ```javascript
 {
   id: "1",
@@ -227,7 +262,9 @@ Gets normalized to...
 ```
 
 ## Mutations
-To run a mutation, first call the [useMutation](#useMutation) hook with a query key. The return value is a tuple that includes a `mutate` function, and an object with information related to the request. Then call the `mutate` function to execute the mutation, passing it the data to be submitted.
+
+To run a mutation, first call the [useMutation](#usemutation) hook with a query key. The return value is a tuple that includes a `mutate` function, and an object with information related to the request. Then call the `mutate` function to execute the mutation, passing it the data to be submitted.
+
 ```javascript
 import { useMutation } from 'jsonapi-react'
 
@@ -254,7 +291,9 @@ function AddTodo() {
 ```
 
 ### Serialization
+
 The mutation function expects a [normalized](#normalization) resource object, and automatically handles serializing it. For example, this...
+
 ```javascript
 {
   id: "1",
@@ -267,6 +306,7 @@ The mutation function expects a [normalized](#normalization) resource object, an
 ```
 
 Gets serialized to...
+
 ```javascript
 {
   "data": {
@@ -288,18 +328,22 @@ Gets serialized to...
 ```
 
 ## Deleting Resources
+
 `jsonapi-react` doesn't currently provide a hook for deleting resources, because there's typically not much local state management associated with the action. Instead, deleting resources is supported through a [manual request](#manual-requests) on the `client` instance.
 
-
 ## Caching
+
 `jsonapi-react` implements a `stale-while-revalidate` in-memory caching strategy that ensures queries are deduped across the application and only executed when needed.  Caching is disabled by default, but can be configured both globally, and/or per query instance.
 
 ### Configuration
+
 Caching behavior is determined by two configuration values:
+
 - `cacheTime` - The number of seconds the response should be cached from the time it is received.
 - `staleTime` - The number of seconds until the response becomes stale. If a cached query that has become stale is requested, the cached response is returned, and the query is refetched in the background.  The refetched response is delivered to any active query instances, and re-cached for future requests.
 
 To assign default caching rules for the whole application, configure the client instance.
+
 ```javascript
 const client = new ApiClient({
   cacheTime: 5 * 60,
@@ -308,6 +352,7 @@ const client = new ApiClient({
 ```
 
 To override the global caching rules, pass a configuration object to `useQuery`.
+
 ```javascript
 useQuery('todos', {
   cacheTime: 5 * 60,
@@ -316,6 +361,7 @@ useQuery('todos', {
 ```
 
 ### Invalidation
+
 When performing mutations, there's a good chance one or more cached queries should get invalidated, and potentially refetched immediately.
 
 Since the JSON:API schema allows us to determine which resources (including relationships) were updated, the following steps are automatically taken after successful mutations:
@@ -324,6 +370,7 @@ Since the JSON:API schema allows us to determine which resources (including rela
 - If a query for the mutated resource is cached, and the query URL matches the mutation URL (i.e. the responses can be assumed analogous), the cache is updated with the mutation result and delivered to active instances.  If the URL's don't match (e.g. one used refinements), then the cache is invalidated and the query refetched for active instances.
 
 To override which resource types get invalidated as part of a mutation, the `useMutation` hook accepts a `invalidate` option.
+
 ```JavaScript
 const [mutation] = useMutation(['todos', 1], {
   invalidate: ['todos', 'comments']
@@ -331,6 +378,7 @@ const [mutation] = useMutation(['todos', 1], {
 ```
 
 To prevent any invalidation from taking place, pass false to the `invalidate` option.
+
 ```JavaScript
 const [mutation] = useMutation(['todos', 1], {
   invalidate: false
@@ -338,7 +386,8 @@ const [mutation] = useMutation(['todos', 1], {
 ```
 
 ## Manual Requests
-Manual API requests can be performed through the client instance, which can be obtained with the [useClient](#useClient) hook
+
+Manual API requests can be performed through the client instance, which can be obtained with the [useClient](#useclient) hook
 
 ```javascript
 import { useClient } from 'jsonapi-react'
@@ -349,6 +398,7 @@ function Todos() {
 ```
 
 The client instance is also included in the object returned from the `useQuery` and `useMutation` hooks.
+
 ```javascript
 function Todos() {
   const { client } = useQuery('todos')
@@ -358,6 +408,7 @@ function EditTodo() {
   const [mutate, { client }] = useMutation('todos')
 }
 ```
+
 The client request methods have a similar signature as the hooks, and return the same response structure.
 
 ```javascript
@@ -372,6 +423,7 @@ const { error } = await client.delete(['todos', 1])
 ```
 
 ## Server-Side Rendering
+
 Full SSR support is included out of the box, and requires a small amount of extra configuration on the server.
 
 ```javascript
@@ -403,6 +455,7 @@ app.use(async (req, res) => {
 ```
 
 The above example assumes that the `Html` component exposes the `initialState` for client rehydration.
+
 ```html
 <script>
   window.__APP_STATE__ = JSON.stringify(state)
@@ -410,6 +463,7 @@ The above example assumes that the `Html` component exposes the `initialState` f
 ```
 
 On the client side you'll then need to hydrate the client instance.
+
 ```javascript
 const client = new ApiClient({
   url: 'https://my-api.com',,
@@ -421,6 +475,7 @@ client.hydrate(
 ```
 
 To prevent specific queries from being fetched during SSR, the `useQuery` hook accepts a `ssr` option.
+
 ```javascript
 const result = useQuery('todos', { ssr: false })
 ```
@@ -428,7 +483,9 @@ const result = useQuery('todos', { ssr: false })
 ## API
 
 ### `useQuery`
-### Options
+
+#### Options
+
 - `queryArg: String | [String, Int, Params: Object] | falsey`
   - A string, or array of strings/integers.
   - Array may contain a query parameter object as the last value.
@@ -446,7 +503,9 @@ const result = useQuery('todos', { ssr: false })
   - `client: ApiClient`
     - An optional separate client instance.
     - Defaults to context provided instance.
-### Result
+
+#### Result
+
 - `data: Object | Array | undefined`
   - The normalized (deserialized) result from a successful request.
 - `meta: Object | undefined`
@@ -463,7 +522,9 @@ const result = useQuery('todos', { ssr: false })
   - The client instance being used by the hook.
 
 ### `useMutation`
-### Options
+
+#### Options
+
 - `queryArg: String | [String, Int, Params: Object]`
   - A string, or array of strings/integers.
   - Array may contain a query parameter object as the last value.
@@ -475,7 +536,9 @@ const result = useQuery('todos', { ssr: false })
   - `client: ApiClient`
     - An optional separate client instance.
     - Defaults to context provided instance.
-### Result
+
+#### Result
+
 - `mutate: Function(Object | Array)`
   - The mutation function you call with resource data to execute the mutation.
   - Returns a promise that resolves to the result of the mutation.
@@ -495,16 +558,21 @@ const result = useQuery('todos', { ssr: false })
   - The client instance being used by the hook.
 
 ### `useIsFetching`
-### Result
+
+#### Result
+
 - `isFetching: Boolean`
   - Returns `true` if any query in the application is fetching.
 
 ### `useClient`
-### Result
+
+#### Result
+
 - `client: ApiClient`
   - The client instance on the current context.
 
 ### `ApiClient`
+
 - `url: String`
   - The full URL of the remote API.
 - `mediaType: String`
@@ -530,7 +598,9 @@ const result = useQuery('todos', { ssr: false })
 - `fetchOptions: Object`
   - Default options to use when calling `fetch`.
   - See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/fetch) for available options.
-### Methods
+
+#### Methods
+
 - `fetch(queryKey: String | [String, Int, Params: Object], [config]: Object)`
   - Submits a query request.
 - `mutate(queryKey: String | [String, Int, Params: Object], data: Object | Array, [config]: Object)`
@@ -552,17 +622,23 @@ const result = useQuery('todos', { ssr: false })
   - Hydrates a client instance with state after SSR.
 
 ### `ApiProvider`
-### Options
+
+#### Options
+
 - `client: ApiClient`
   - The API client instance that should be used by the application.
 
 ### `renderWithData`
-### Options
+
+#### Options
+
 - `element: Object`
   - The root React element of the application.
 - `client: ApiClient`
   - The client instance used during rendering.
-### Result
+
+#### Result
+
 - `content: String`
   - The rendered application string.
 - `initialState: Array`
