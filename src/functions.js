@@ -107,9 +107,11 @@ export function parseQueryArg(arg, options = {}) {
     params = {}
   }
 
-  const last = keys[keys.length - 1]
-  if (isId(last) || isUUID(last)) {
-    id = String(keys.pop())
+  const idKey = keys.find(k => isId(k) || isUUID(k));
+  id = idKey ? String(idKey) : null;
+
+  if (id === keys[keys.length - 1]) {
+    keys.pop();
   }
 
   keys = keys.filter(k => !isId(k) && !isUUID(k))
