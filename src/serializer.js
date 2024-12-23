@@ -1,4 +1,4 @@
-import { isObject, coerceValue } from './functions'
+import { isObject, coerceValue, toArray } from './functions'
 
 export class Serializer {
   constructor({ schema } = {}) {
@@ -94,15 +94,10 @@ export class Serializer {
   }
 
   deserialize(res) {
-    if (!res) {
-      return null
-    }
+    if (!res) return null
 
     if (res.error) {
-      if (isObject(res.error)) {
-        return res
-      }
-      return {
+      return isObject(res.error) ? res : {
         error: {
           status: String(res.status || 400),
           title: res.error,
@@ -116,27 +111,16 @@ export class Serializer {
       return error ? { error } : { errors: res.errors }
     }
 
-    if (!res.data) {
-      return res
-    }
+    if (!res.data) return res
 
     let { data, included, ...rest } = res
+    const records = [...toArray(data), ...(included || [])]
 
-    if (!Array.isArray(data)) {
-      data = [data]
-    }
+    const fields = Object.fromEntries(
+      Object.keys(this.schema).map(ref => [ref, this.schema[ref].fields])
+    )
 
-    if (included) {
-      data = data.concat(included)
-    }
-
-    const fields = {}
-
-    Object.keys(this.schema).forEach(ref => {
-      fields[ref] = this.schema[ref].fields
-    })
-
-    data = data.map(rec => {
+    const processedData = records.map(rec => {
       const attrs = {
         id: rec.id,
         ...rec.attributes,
@@ -144,67 +128,62 @@ export class Serializer {
       }
 
       if (fields[rec.type]) {
-        let ref
+        Object.entries(fields[rec.type])
+          .filter(([_, ref]) => ref === 'type' || ref?.type === 'type')
+          .forEach(([field, ref]) => {
+            attrs[field] = coerceValue(attrs[field], 'type', {
+              parentType: rec.type,
+              field: ref
+            })
+          })
 
-        for (let field in fields[rec.type]) {
-          ref = fields[rec.type][field]
-
-          if (ref.type) {
-            attrs[field] = coerceValue(attrs[field], ref.type) || attrs[field]
-          }
-
-          if (typeof ref.resolve === 'function') {
-            attrs[field] = ref.resolve(attrs[field], attrs, rec)
-          }
-        }
+        Object.entries(fields[rec.type])
+          .filter(([_, ref]) => ref !== 'type' && ref?.type !== 'type')
+          .forEach(([field, ref]) => {
+            if (attrs[field] !== undefined || typeof ref?.resolve === 'function') {
+              if (ref.type) {
+                attrs[field] = coerceValue(attrs[field], ref.type, {
+                  parentType: rec.type,
+                  field: ref
+                })
+              }
+              if (typeof ref?.resolve === 'function') {
+                attrs[field] = ref.resolve(attrs[field], attrs, rec)
+              }
+            }
+          })
       }
 
-      return {
-        ...rec,
-        attributes: attrs,
-      }
+      return { ...rec, attributes: attrs }
     })
 
-    data.forEach(rec => {
-      if (!rec.relationships) {
-        return
-      }
+    processedData.forEach(rec => {
+      if (!rec.relationships) return
 
-      Object.keys(rec.relationships).forEach(key => {
-        const rel = rec.relationships[key].data
-
+      Object.entries(rec.relationships).forEach(([key, { data: rel }]) => {
         if (!rel) return
 
         if (Array.isArray(rel)) {
           rec.attributes[key] = rel
-            .map(r => data.find(d => d.type === r.type && d.id === r.id))
+            .map(r => processedData.find(d => d.type === r.type && d.id === r.id))
             .filter(Boolean)
             .map(r => r.attributes)
         } else {
-          const child = data.find(r => r.type === rel.type && r.id === rel.id)
+          const child = processedData.find(r => r.type === rel.type && r.id === rel.id)
           rec.attributes[key] = child ? child.attributes : null
         }
       })
     })
 
-    if (Array.isArray(res.data)) {
-      data = data.reduce((acc, rec) => {
-        const found = res.data.find(r => r.id === rec.id && r.type === rec.type)
-        if (found) {
-          // Merge attributes and meta data
-          const mergedData = { ...rec.attributes, meta: rec.meta }
-          return acc.concat(mergedData)
-        }
-        return acc
-      }, [])
-    } else {
-      const record = data.find(r => r.id === res.data.id)
-      if (record) {
-        // Merge attributes and meta data for the single object case
-        data = { ...record.attributes, meta: record.meta }
-      }
-    }
+    const finalData = Array.isArray(res.data)
+      ? processedData
+          .filter(rec => res.data.some(r => r.id === rec.id && r.type === rec.type))
+          .map(rec => ({ ...rec.attributes, meta: rec.meta }))
+      : (() => {
+          const record = processedData.find(r => r.id === res.data.id)
+          return record ? { ...record.attributes, meta: record.meta } : null
+        })()
 
-    return { data, ...rest }
+    return { data: finalData, ...rest }
   }
 }

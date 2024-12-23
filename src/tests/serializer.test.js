@@ -403,4 +403,36 @@ describe('deserialize', () => {
       ],
     })
   })
+
+  test('it populates type field with parent type using only string type definition', () => {
+    const serializer = new Serializer({
+      schema: {
+        todos: {
+          type: 'todos',
+          fields: {
+            todoType: 'type',
+            status: 'string',
+            created: 'date',
+          },
+        },
+      },
+    })
+
+    const result = serializer.deserialize(success)
+
+    expect(result).toEqual({
+      data: {
+        id: '1',
+        title: 'Clean the kitchen!',
+        todoType: 'todos',
+        created: '2020-01-01T00:00:00.000Z',
+        meta: undefined,
+        user: {
+          id: '2',
+          name: 'Steve',
+          meta: undefined
+        },
+      },
+    })
+  })
 })

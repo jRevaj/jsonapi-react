@@ -1,4 +1,4 @@
-import { coerceValue } from '../functions'
+import { coerceValue, parseSchema } from '../functions'
 
 test('it coerces string values', () => {
   expect(coerceValue('hello', 'string')).toBe('hello')
@@ -42,3 +42,29 @@ test('it returns the value for unknown types', () => {
   expect(coerceValue(true, 'unknown')).toBe(true)
   expect(coerceValue(null, 'unknown')).toBeNull()
 })
+
+test('it populates type field with parent type', () => {
+  expect(coerceValue('something', 'type', { parentType: 'users' })).toBe('users')
+  expect(coerceValue(null, 'type', { parentType: 'todos' })).toBe('todos')
+  expect(coerceValue('fallback', 'type', {})).toBe('fallback')
+})
+
+test('it populates type field with parent type using only string type definition', () => {
+  const schema = parseSchema({
+    users: {
+      type: 'users',
+      fields: {
+        test: 'string',
+        testType: 'type',
+      },
+    },
+  })
+
+  const result = coerceValue('fallback', 'testType', {
+    parentType: 'users',
+    field: schema.users.fields.testType,
+  })
+
+  expect(result).toBe('users')
+})
+

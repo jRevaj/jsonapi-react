@@ -68,7 +68,11 @@ export function parseSchema(schema = {}) {
           if (isObject(item)) {
             result[type][key][name] = { ...item }
           } else {
-            result[type][key][name] = { type: item }
+            const field = { type: item }
+            if (item === 'type') {
+              field.alwaysInclude = true
+            }
+            result[type][key][name] = field
           }
         }
       }
@@ -187,8 +191,10 @@ export function mergePayloadTypes(type, data, schema, types = []) {
   })
 }
 
-export function coerceValue(val, type) {
-  switch (type) {
+export function coerceValue(val, type, context = {}) {
+  const fieldType = context.field?.type || type
+
+  switch (fieldType) {
     case 'string':
       return String(val || (val === 0 ? 0 : ''))
     case 'number':
@@ -204,6 +210,8 @@ export function coerceValue(val, type) {
     case 'boolean':
       if (val === 'false') return false
       return !!val
+    case 'type':
+      return context.parentType || val || null
     default:
       return val
   }
