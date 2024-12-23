@@ -14,3 +14,6 @@ yarn-error.log*
 # IDE
 .idea
 .vscode
+
+# temp
+temp
