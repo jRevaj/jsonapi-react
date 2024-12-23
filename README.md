@@ -154,6 +154,32 @@ const schema = {
 }
 ```
 
+If you need to support multiple types for a resource, you can provide an array of types. You can also access the type value with the `type` property on the resource field. When deserializing, this property will be set to the actual type of the resource. On the other hand, when serializing, the value used as type will always be the first value in the array (this fits only our specific needs).
+
+```javascript
+const schema = {
+  todos: {
+    type: ['todos', 'notes'],
+    fields: {
+      todoType: 'type'
+    },
+  },
+}
+
+// or
+
+const schema = {
+  todos: {
+    type: ['todos', 'notes'],
+    fields: {
+      todoType: {
+        type: 'type',
+      },
+    },
+  },
+}
+```
+
 ## Queries
 
 To make a query, call the [useQuery](#usequery) hook with the `type` of resource you are fetching. The returned object will contain the query result, as well as information relating to the request.
