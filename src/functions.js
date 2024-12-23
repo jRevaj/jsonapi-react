@@ -142,8 +142,9 @@ export function parseTypes(keys, schema = {}) {
     }
 
     if (ref) {
-      arr.push(ref.type)
-      ref = schema[ref.type]
+      const type = Array.isArray(ref.type) ? ref.type[0] : ref.type
+      arr.push(type)
+      ref = schema[type]
     }
   }
 

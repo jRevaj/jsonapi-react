@@ -21,6 +21,34 @@ describe('ApiClient', () => {
     });
   });
 
+  test('mutate POST request uses first type when multiple types are provided', async () => {
+    const todosQuery = client.createQuery({ key: 'todos' })
+    client.request = jest.fn().mockResolvedValue({
+      data: { id: '2', type: 'todos', attributes: { title: 'New Todo' } },
+    })
+
+    await client.mutate(['todos'], { title: 'New Todo' })
+
+    expect(client.request).toHaveBeenCalledWith(todosQuery.url, {
+      method: 'POST',
+      body: JSON.stringify({ data: { type: 'todos', attributes: { title: 'New Todo' } } }),
+    })
+  })
+
+  test('mutate PATCH request uses first type when multiple types are provided', async () => {
+    const todosQuery = client.createQuery({ key: 'todos' })
+    client.request = jest.fn().mockResolvedValue({
+      data: { id: '2', type: 'todos', attributes: { title: 'New Todo' } },
+    })
+
+    await client.mutate(['todos'], { title: 'New Todo' }, { method: 'PATCH' })
+
+    expect(client.request).toHaveBeenCalledWith(todosQuery.url, {
+      method: 'PATCH',
+      body: JSON.stringify({ data: { type: 'todos', attributes: { title: 'New Todo' } } }),
+    })
+  })
+
   test('mutate invalidates related queries', async () => {
     const todosQuery = client.createQuery({ key: 'todos' });
     todosQuery.cache = { data: [{ id: '1', title: 'Old Todo' }] };

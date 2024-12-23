@@ -20,7 +20,7 @@ const schema = {
     },
   },
   todos: {
-    type: 'todos',
+    type: ['todos', 'tests'],
     fields: {
       status: {
         readOnly: true,
