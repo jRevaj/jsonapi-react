@@ -435,4 +435,89 @@ describe('deserialize', () => {
       },
     })
   })
+
+  test('it populates type field with parent type using only string type definition with complex schema', () => {
+    const schema = {
+      todos: {
+        type: ['todos', 'tests', 'test-todos'],
+        fields: {
+          title: 'string',
+          todoType: 'type',
+        },
+        relationships: {
+          user: {
+            type: 'users',
+          },
+          comments: {
+            type: 'comments',
+          },
+        },
+      },
+      users: {
+        type: 'users',
+        fields: {
+          test: 'string',
+          testType: 'type',
+        },
+        relationships: {
+          todos: {
+            type: 'todos',
+          },
+          comments: {
+            type: 'comments',
+          },
+        },
+      },
+      comments: {
+        type: 'comments',
+        fields: {
+          test: 'string',
+          testType: 'type',
+        },
+      },
+    }
+
+    const serializer = new Serializer({ schema })
+    const result = serializer.deserialize({
+      data: {
+        id: '1',
+        type: 'tests',
+        attributes: {
+          title: 'testing type',
+        },
+        relationships: {
+          user: {
+            data: {
+              id: '2',
+              type: 'users',
+            },
+          },
+        },
+      },
+      included: [
+        {
+          id: '2',
+          type: 'users',
+          attributes: {
+            test: 'test',
+          },
+        },
+      ],
+    })
+
+    expect(result).toEqual({
+      data: {
+        id: '1',
+        title: 'testing type',
+        todoType: 'tests',
+        meta: undefined,
+        user: {
+          id: '2',
+          test: 'test',
+          testType: 'users',
+        },
+      },
+    })
+  })
 })
+

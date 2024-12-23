@@ -51,7 +51,7 @@ export function parseSchema(schema = {}) {
     }
 
     result[type] = {
-      type: obj.type || type,
+      type: Array.isArray(obj.type) ? obj.type : obj.type || type,
       fields: {},
       relationships: {},
     }

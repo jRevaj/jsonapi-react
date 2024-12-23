@@ -1,8 +1,23 @@
-import { isObject, coerceValue, toArray } from './functions'
+import { isObject, coerceValue } from './functions'
+
+const createResourceKey = (type, id) => `${type}:${id}`
+
+const createFieldsCache = (schema) => {
+  const cache = new Map()
+  for (const [type, { fields, type: schemaType }] of Object.entries(schema)) {
+    cache.set(type, {
+      fields,
+      isArray: Array.isArray(schemaType),
+      types: Array.isArray(schemaType) ? new Set(schemaType) : null
+    })
+  }
+  return cache
+}
 
 export class Serializer {
   constructor({ schema } = {}) {
     this.schema = schema || {}
+    this.fieldsCache = createFieldsCache(this.schema)
   }
 
   serialize(type, attrs) {
@@ -96,94 +111,117 @@ export class Serializer {
   deserialize(res) {
     if (!res) return null
 
-    if (res.error) {
-      return isObject(res.error) ? res : {
-        error: {
-          status: String(res.status || 400),
-          title: res.error,
-          message: res.error,
-        },
+    if (res.error || res.errors) {
+      if (res.error) {
+        return isObject(res.error) ? res : {
+          error: {
+            status: String(res.status || 400),
+            title: res.error,
+            message: res.error,
+          },
+        }
       }
-    }
-
-    if (res.errors) {
       const error = res.errors.find(e => e.status !== '422')
       return error ? { error } : { errors: res.errors }
     }
 
     if (!res.data) return res
 
-    let { data, included, ...rest } = res
-    const records = [...toArray(data), ...(included || [])]
-
-    const fields = Object.fromEntries(
-      Object.keys(this.schema).map(ref => [ref, this.schema[ref].fields])
-    )
-
-    const processedData = records.map(rec => {
+    const { data, included = [], ...rest } = res
+    const isArrayData = Array.isArray(data)
+    const records = isArrayData ? [...data, ...included] : [data, ...included]
+    
+    const processedDataMap = new Map()
+    
+    const processedData = new Array(records.length)
+    for (let i = 0; i < records.length; i++) {
+      const rec = records[i]
       const attrs = {
         id: rec.id,
         ...rec.attributes,
-        meta: rec.meta,
+        ...(rec.meta != null && { meta: rec.meta })
       }
 
-      if (fields[rec.type]) {
-        Object.entries(fields[rec.type])
-          .filter(([_, ref]) => ref === 'type' || ref?.type === 'type')
-          .forEach(([field, ref]) => {
-            attrs[field] = coerceValue(attrs[field], 'type', {
+      for (const [type, { fields, isArray, types }] of this.fieldsCache) {
+        if (isArray ? types.has(rec.type) : type === rec.type) {
+          this.processTypeFields(attrs, fields, rec.type)
+          this.processNonTypeFields(attrs, fields, rec)
+        }
+      }
+
+      const processed = { ...rec, attributes: attrs }
+      const key = createResourceKey(rec.type, rec.id)
+      processedDataMap.set(key, processed)
+      processedData[i] = processed
+    }
+
+    for (const rec of processedData) {
+      if (!rec.relationships) continue
+
+      for (const [key, { data: rel }] of Object.entries(rec.relationships)) {
+        if (!rel) continue
+
+        if (Array.isArray(rel)) {
+          const relAttrs = new Array(rel.length)
+          let validCount = 0
+          for (let i = 0; i < rel.length; i++) {
+            const r = rel[i]
+            const child = processedDataMap.get(createResourceKey(r.type, r.id))
+            if (child) {
+              relAttrs[validCount++] = child.attributes
+            }
+          }
+          rec.attributes[key] = validCount === rel.length ? relAttrs : relAttrs.slice(0, validCount)
+        } else {
+          const child = processedDataMap.get(createResourceKey(rel.type, rel.id))
+          rec.attributes[key] = child ? child.attributes : null
+        }
+      }
+    }
+
+    if (isArrayData) {
+      const dataKeys = new Set(data.map(d => createResourceKey(d.type, d.id)))
+      return {
+        data: processedData
+          .filter(rec => dataKeys.has(createResourceKey(rec.type, rec.id)))
+          .map(({ attributes, meta }) => ({ ...attributes, meta })),
+        ...rest
+      }
+    }
+
+    const record = processedDataMap.get(createResourceKey(data.type, data.id))
+    return {
+      data: record ? { ...record.attributes, meta: record.meta } : null,
+      ...rest
+    }
+  }
+
+  processTypeFields(attrs, typeFields, parentType) {
+    Object.entries(typeFields)
+      .filter(([_, ref]) => ref === 'type' || ref?.type === 'type')
+      .forEach(([field, ref]) => {
+        attrs[field] = coerceValue(attrs[field], 'type', {
+          parentType,
+          field: ref
+        })
+      })
+  }
+
+  processNonTypeFields(attrs, typeFields, rec) {
+    Object.entries(typeFields)
+      .filter(([_, ref]) => ref !== 'type' && ref?.type !== 'type')
+      .forEach(([field, ref]) => {
+        if (attrs[field] !== undefined || typeof ref?.resolve === 'function') {
+          if (ref.type) {
+            attrs[field] = coerceValue(attrs[field], ref.type, {
               parentType: rec.type,
               field: ref
             })
-          })
-
-        Object.entries(fields[rec.type])
-          .filter(([_, ref]) => ref !== 'type' && ref?.type !== 'type')
-          .forEach(([field, ref]) => {
-            if (attrs[field] !== undefined || typeof ref?.resolve === 'function') {
-              if (ref.type) {
-                attrs[field] = coerceValue(attrs[field], ref.type, {
-                  parentType: rec.type,
-                  field: ref
-                })
-              }
-              if (typeof ref?.resolve === 'function') {
-                attrs[field] = ref.resolve(attrs[field], attrs, rec)
-              }
-            }
-          })
-      }
-
-      return { ...rec, attributes: attrs }
-    })
-
-    processedData.forEach(rec => {
-      if (!rec.relationships) return
-
-      Object.entries(rec.relationships).forEach(([key, { data: rel }]) => {
-        if (!rel) return
-
-        if (Array.isArray(rel)) {
-          rec.attributes[key] = rel
-            .map(r => processedData.find(d => d.type === r.type && d.id === r.id))
-            .filter(Boolean)
-            .map(r => r.attributes)
-        } else {
-          const child = processedData.find(r => r.type === rel.type && r.id === rel.id)
-          rec.attributes[key] = child ? child.attributes : null
+          }
+          if (typeof ref?.resolve === 'function') {
+            attrs[field] = ref.resolve(attrs[field], attrs, rec)
+          }
         }
       })
-    })
-
-    const finalData = Array.isArray(res.data)
-      ? processedData
-          .filter(rec => res.data.some(r => r.id === rec.id && r.type === rec.type))
-          .map(rec => ({ ...rec.attributes, meta: rec.meta }))
-      : (() => {
-          const record = processedData.find(r => r.id === res.data.id)
-          return record ? { ...record.attributes, meta: record.meta } : null
-        })()
-
-    return { data: finalData, ...rest }
   }
 }
