@@ -245,6 +245,14 @@ export class ApiClient {
     })
 
     let result = await this.request(query.url, options)
+    if (!result || Object.keys(result).length === 0) {
+      this.dispatch({
+        type: actions.RECEIVE_MUTATION,
+        data: null
+      })
+      return { success: true }
+    }
+
     let schema = result
 
     result = this.normalize(result, { payload: data })
@@ -254,7 +262,7 @@ export class ApiClient {
       ...result,
     })
 
-    if (!schema.error && !schema.errors) {
+    if (schema && !schema.error && !schema.errors) {
       let invalid
 
       if (invalidate) {
