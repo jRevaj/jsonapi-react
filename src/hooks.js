@@ -209,7 +209,15 @@ export function useMutation(queryArg, config = {}) {
     const result = await promise
 
     if (mountedRef.current) {
-      if (result.data) {
+      if (!result) {
+        if (onSuccess) {
+          onSuccess({})
+        }
+        setState({
+          isLoading: false,
+          data: null
+        })
+      } else if (result.data) {
         if (onSuccess) {
           onSuccess(result)
         }
