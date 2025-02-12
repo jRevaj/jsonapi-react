@@ -250,7 +250,7 @@ export class ApiClient {
         type: actions.RECEIVE_MUTATION,
         data: null
       })
-      return { success: true }
+      return
     }
 
     let schema = result

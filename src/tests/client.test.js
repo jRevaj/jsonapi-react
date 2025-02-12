@@ -108,12 +108,12 @@ describe('ApiClient', () => {
     expect(usersQuery.cache).toBeNull()
   })
 
-  test('successful mutate with empty data and empty response returns object with success: true', async () => {
+  test('successful mutate with empty data and empty response returns no content', async () => {
     const todosQuery = client.createQuery({ key: 'todos' })
     client.request = jest.fn().mockResolvedValue()
 
     const res = await client.mutate(['todos'], {})
 
-    expect(res).toStrictEqual({ success: true })
+    expect(res).toStrictEqual(undefined)
   })
 })
